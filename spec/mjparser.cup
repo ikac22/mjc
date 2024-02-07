@@ -1,0 +1,443 @@
+package mjc;
+
+import java_cup.runtime.*;
+import org.apache.log4j.*;
+import mjc.ast.*;
+
+parser code {:
+
+	boolean errorDetected;
+	
+	Logger log = Logger.getLogger(getClass());
+   
+   
+    // slede redefinisani metodi za prijavu gresaka radi izmene teksta poruke
+     
+    public void report_fatal_error(String message, Object info) throws java.lang.Exception {
+      done_parsing();
+      report_error(message, info);
+    }
+  
+    public void syntax_error(Symbol cur_token) {
+        report_error("\nSintaksna greska", cur_token);
+    }
+  
+    public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
+        report_fatal_error("Fatalna greska, parsiranje se ne moze nastaviti", cur_token);
+    }
+
+    public void report_error(String message, Object info) {
+    	errorDetected = true;
+    	StringBuilder msg = new StringBuilder(message); 
+    	if (info instanceof Symbol)
+            msg.append (" na liniji ").append(((Symbol)info).left).append(", ").append(((Symbol)info).right);
+        log.error(msg.toString());
+    }
+
+
+:}
+
+init with {:
+	errorDetected = false;
+:}
+
+scan with {:
+	Symbol s = this.getScanner().next_token();
+	// if (s != null && s.value != null) 
+	//	 log.info(s.toString() + " " + s.value.toString());
+	return s;
+:}
+
+terminal PROG, BREAK, CLASS, ELSE, CONST, IF, NEW, PRINT, READ, RETURN, VOID, EXTENDS, CONTINUE;
+terminal FOR, STATIC, NAMESPACE;
+
+terminal ARROW, PLUS, MINUS, MUL, DIV, MOD, EQUAL, AND, OR, EQUALSTO, DIFFERENT, GREATER;
+terminal GREATERE, LESS, LESSE, INC, DEC, SEMI, COLON, DOT, COMMA;
+
+terminal LPAREN, RPAREN, LBRACE, RBRACE, LSQBRACE, RSQBRACE;
+
+terminal String BOOL;
+terminal Integer NUMBER ;
+terminal String IDENT ;
+terminal String CHAR;
+
+nonterminal Program;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj ProgName;
+
+nonterminal NamespaceList, Namespace;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj NamespaceName;
+
+nonterminal MethodDeclList, MethodDecl, OptFormPars, FormPars, FormParam;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodName;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct MethodType;
+
+nonterminal DeclList, Declaration;
+nonterminal ConstDecl, ConstList; 
+nonterminal java.lang.Integer Constant;
+
+
+nonterminal VarDeclList, VarDecl, VarList, ArrVar; 
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Variable;
+
+nonterminal ClassDecl, ClassInitList, ClassNoInitList, Extend, ClassMethods;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj ClassName;
+
+nonterminal Static, StaticDecl, StaticInitList, StaticInitializer;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj StaticInitStart;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Type;
+nonterminal ParamType;
+
+nonterminal Call, ActPars;
+nonterminal CallStart, CallEnd;
+nonterminal OptParen;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr,Term;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Factor, NewFactor, DesignatorFactor;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator; 
+nonterminal rs.etf.pp1.symboltable.concepts.Obj DesignatorList;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct DesignatorStatement;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj DesignatorRef;
+
+nonterminal Label;
+nonterminal Index, IndexStart, IndexEnd;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Members; 
+
+nonterminal	java.lang.Integer UnMinus;
+nonterminal Assignop, Relop, Addop, Mulop;
+nonterminal Condition, CondTerm, CondFact, OptCondFact;
+nonterminal OptCommaNumConst;
+nonterminal DesignStmtList, OptDesignStmtList;
+nonterminal	ForLoopMatched, ForLoopUnmatched;
+nonterminal Matched, Unmatched;
+nonterminal ForStart, IfStart, ElseStart, ForCond, IfCond, ForBodyStart, IfBodyStart;
+nonterminal Statement, StatementList;
+nonterminal MulAssignStart;
+
+
+Program 			::= (Program) PROG ProgName NamespaceList DeclList LBRACE MethodDeclList RBRACE;
+
+ProgName			::= (ProgName) IDENT:Name;
+
+NamespaceList 		::= (NamespaceListDecl) NamespaceList Namespace
+						|	
+						(NoNamespaceDecl);
+
+Namespace			::= (Namespace) NAMESPACE NamespaceName LBRACE DeclList LBRACE MethodDeclList RBRACE RBRACE;
+
+NamespaceName		::= (NamespaceName) IDENT:Name;
+
+
+ClassDecl			::= (ClassInitListDecl) ClassInitList
+						|
+						(ClassNoInitListDecl) ClassNoInitList;
+
+ClassInitList		::= (ClassInitList) CLASS ClassName Extend LBRACE StaticDecl StaticInitList VarDeclList ClassMethods RBRACE;
+
+ClassNoInitList		::= (ClassNoInitList) CLASS ClassName Extend LBRACE StaticDecl VarDeclList ClassMethods RBRACE;
+
+ClassName 			::= (ClassName) IDENT:Name;
+
+/* CURR 1 */
+
+Extend				::= (Extends) EXTENDS Type 
+						|
+						(NoExtends);
+						
+StaticDecl			::= (StaticDeclar)StaticDecl Static VarDecl
+						|
+						(NoStaticDecl);
+
+Static				::= STATIC;
+
+StaticInitList		::= (StaticInits) StaticInitList StaticInitializer
+						|
+						(NoStaticInit) StaticInitializer;
+
+ClassMethods		::= (ClassMethodsDecl) LBRACE MethodDeclList RBRACE
+						|
+						(NoClassMethods);
+
+MethodDeclList		::= (MethodListDecl) MethodDeclList MethodDecl
+						|
+						(NoMethodDecl);
+
+MethodDecl			::= (MethodDecl) MethodType MethodName LPAREN OptFormPars RPAREN VarDeclList LBRACE StatementList RBRACE;
+
+MethodName			::= (MethodName) IDENT:Name;
+
+MethodType			::= (MethodRetType) Type
+						|
+						(MethodRetVoid) VOID;
+
+OptFormPars 		::= (FormParsExist) FormPars
+						|
+						(NoFormPars);
+
+FormPars			::= (FormParList) FormPars COMMA FormParam
+						|
+						(OneFormPar) FormParam;	
+
+FormParam			::= (FormParam) ParamType Variable;
+
+StaticInitializer 	::= (StaticInitializer) StaticInitStart LBRACE StatementList RBRACE;
+
+StaticInitStart		::= (StaticInitStart) STATIC;
+
+Statement			::= Matched 
+						|
+						Unmatched;
+
+StatementList		::= StatementList Statement
+						|
+						;
+
+Unmatched			::=	(UnmatchedIf)IF IfCond Condition IfBodyStart Statement
+						|
+						(UnmatchedIfElse) IF IfCond Condition IfBodyStart Matched ElseStart Unmatched
+						|
+						(UnmatchedFor) ForLoopUnmatched;
+
+
+
+Matched 			::= (MatchedDesig)DesignatorStatement SEMI
+						|
+						(MatchedIfElse)IF IfCond Condition IfBodyStart Matched ElseStart Matched
+						|
+						(MatchedBreak)BREAK SEMI
+						|
+						(MatchedContinue)CONTINUE SEMI
+						|
+						(MatchedVoidReturn) RETURN SEMI
+						| 
+						(MatchedExprReturn) RETURN Expr SEMI
+						|
+						(MatchedRead)READ LPAREN Designator RPAREN SEMI
+						|
+						(MatchedPrint)PRINT LPAREN Expr OptCommaNumConst RPAREN SEMI 
+						|
+						(MatchedFor)ForLoopMatched
+						|
+						LBRACE StatementList RBRACE;
+
+ForLoopMatched			::= (ForMatched) ForStart LPAREN OptDesignStmtList ForCond OptCondFact SEMI OptDesignStmtList ForBodyStart Matched;
+
+ForLoopUnmatched		::= (ForUnmatched) ForStart LPAREN OptDesignStmtList ForCond OptCondFact SEMI OptDesignStmtList ForBodyStart Unmatched;
+
+IfStart 			::= IF;
+ElseStart			::= (ElseStart)ELSE;
+ForCond				::= (ForCond) SEMI;
+IfCond				::= (IfCond) LPAREN;
+IfBodyStart			::= (IfBodyStart) RPAREN;
+ForStart			::= (ForStart) FOR;
+ForBodyStart		::= (ForBodyStart) RPAREN;
+
+OptCondFact			::= CondFact 
+						|
+						;
+
+OptDesignStmtList 	::= DesignStmtList 
+						|
+						;
+
+DesignStmtList 		::= DesignStmtList COMMA DesignatorStatement
+						|
+						DesignatorStatement;
+						
+OptCommaNumConst		::= (OptComma)COMMA NUMBER:val
+						|
+						(NoOptComma);
+
+Condition			::= (OrCond)Condition OR CondTerm
+						|
+						(TermCond)CondTerm;
+
+
+CondTerm			::= (AndCondTerm)CondTerm AND CondFact
+						|
+						(FactCondTerm)CondFact; 
+
+CondFact			::= (RelopCondFact) Expr Relop Expr
+						|
+						(ExprCondFact) Expr;
+
+
+/* DesignatorStatement, designators and expressions working  */
+DesignatorStatement ::= (AssignDesigStmt) Designator Assignop Expr 
+						|
+						(CallDesigStmt) Designator Call
+						|
+						(IncDesigStmt) Designator INC
+						|
+						(DecDesigStmt) Designator DEC
+						|
+						(MulAssignDesigStmt) MulAssignStart DesignatorList MUL Designator RSQBRACE EQUAL Designator
+						;
+
+MulAssignStart		::= (MulAssignStart) LSQBRACE;
+
+
+DesignatorList		::= (DesigListDesig) DesignatorList Designator COMMA 
+						|
+						(DesigListComma) DesignatorList COMMA
+						|
+						(NoDesigList);
+
+Expr				::= (ExprAdd) Expr Addop Term
+						|
+						(ExprUminus) UnMinus Term
+						;
+
+Term				::=	(MulopFactor) Term Mulop Factor
+						|
+						(CasualFactor) Factor
+						;
+
+ActPars				::= (ActParMore) ActPars COMMA Expr
+						|
+						(ActParFirst) Expr
+						;
+						
+
+Factor				::= (DesigFactor)DesignatorFactor
+						|
+						(NumberFactor)NUMBER:val
+						|
+						(CharFactor)CHAR:val
+						|
+						(BoolFactor)BOOL:val
+						|
+						(AllocFactor)NewFactor
+						|
+						(ParenFactor) LPAREN Expr RPAREN
+						;
+
+NewFactor			::= (ArrayNewFactor) NEW Type Index
+						|
+						(CasualNewFactor) NEW Type OptParen
+						;
+						
+OptParen			::= LPAREN RPAREN
+						|
+						;
+
+DesignatorFactor 	::= (CasualDesigFact) Designator
+						|
+						(MethDesigFact) Designator Call
+						;
+
+Designator			::= (Designator) DesignatorRef Members;
+
+DesignatorRef		::= (NamespaceDesignatorRef) IDENT:nsName COLON COLON IDENT:varName
+						|
+						(CasualDesignatorRef) IDENT:varName
+						;
+
+Members				::= (DesigField) Members DOT IDENT:name
+						| 
+						(DesigElem) Members Index
+						|
+						(NoDesigMem);
+
+Call				::= CallStart ActPars CallEnd
+						|
+						CallStart CallEnd
+						;
+
+CallStart			::= (CallStart) LPAREN;
+CallEnd				::= (CallEnd)	RPAREN;
+
+
+Index				::= (Index) IndexStart Expr IndexEnd;
+
+IndexStart			::= (IndexStart) LSQBRACE;
+
+IndexEnd			::= (IndexEnd) RSQBRACE;
+
+Label				::=	IDENT;
+
+UnMinus				::= (UnMinusTrue) MINUS
+						|
+						(UnMinusFalse) ;
+
+Assignop			::=	(AssignOp) EQUAL;
+
+Relop				::=	(RelopEq) EQUALSTO 
+						| (RelopDiff) DIFFERENT 
+						| (RelopGr)GREATER 
+						| (RelopGre)GREATERE 
+						| (RelopLess)LESS 
+						| (RelopLesse)LESSE
+						;
+						
+Addop				::= (AddopPlus)PLUS
+						| (AddopMinus)MINUS
+						;
+						
+Mulop				::= (MulopMul)MUL 
+						| (MulopDiv)DIV 
+						| (MulopMod)MOD
+						;
+
+
+
+/* List of declarations: WORKS */
+DeclList			::= DeclList Declaration
+						|
+						;
+
+Declaration			::= ConstDecl 
+						| 
+						ClassDecl
+						|
+						VarDecl
+						;
+
+
+/* Constant declarations: WORKS */
+
+
+							  /* TODO: separate types on different declarations maybe */
+ConstDecl			::= (ConstDecl) CONST ParamType ConstList SEMI;
+
+
+								  /* TODO: maybe ConstDeclaration */
+ConstList			::= (ConstListMore) ConstList COMMA IDENT:Name EQUAL Constant
+						|
+						(ConstListStart) IDENT:Name EQUAL Constant
+						;
+
+Constant			::= (ConstNum) NUMBER:val
+						| 
+						(ConstChar) CHAR:val
+						| 
+						(ConstBool) BOOL:val
+						;
+
+/* Varibale declarations: WORKS */
+VarDeclList			::= (VarDecls) VarDeclList VarDecl
+						|
+						(NoVarDecl);
+
+VarDecl				::= (VarDecl) ParamType VarList SEMI;
+
+VarList				::= VarList COMMA Variable
+						|
+						Variable
+						;
+						
+Variable 			::= (CasualVar) IDENT:Name
+						|
+						(ArrayVar) ArrVar
+						;
+
+ArrVar				::= (ArrVar) IDENT:Name LSQBRACE RSQBRACE;
+
+Type				::= (NamespaceType) IDENT:nsName COLON COLON IDENT:varName
+						|
+						(CasualType) IDENT:varName
+						;
+
+ParamType			::= (ParamType) Type;
+

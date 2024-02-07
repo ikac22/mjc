@@ -1,0 +1,8 @@
+INFO  07:09:44,863 - Compiling source file: /home/ikac/shared/projects/MicroJavaCompiler/test/programs/test301.mj
+INFO  07:09:44,922 - ==============================
+INFO  07:09:44,927 - On line 3: progName found: test301, scope = 0
+INFO  07:09:44,929 - ==============================
+INFO  07:09:44,929 - All semantic checks passed
+INFO  07:09:44,929 - ==============================
+INFO  07:09:44,929 - Generating code
+INFO  07:09:44,933 - Object file generated.
